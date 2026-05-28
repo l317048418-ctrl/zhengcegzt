@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>教育政策知识库工作台</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">官方政策知识库</p>
+          <h1>教育政策工作台</h1>
+        </div>
+        <div class="actions">
+          <button id="updateBtn" class="ghost" type="button">更新知识库</button>
+          <button id="publishBtn" class="ghost" type="button">发布到 GitHub</button>
+          <a id="dataApiLink" class="ghost link" href="/api/search" target="_blank">数据接口</a>
+        </div>
+      </header>
+
+      <dialog id="publishDialog" class="publishDialog" aria-labelledby="publishTitle">
+        <section class="publishPanel">
+          <header class="publishHeader">
+            <div>
+              <p class="eyebrow">GitHub Pages</p>
+              <h2 id="publishTitle">网页登录发布</h2>
+            </div>
+            <button id="publishCloseBtn" class="iconButton" type="button" aria-label="关闭">×</button>
+          </header>
+          <div class="publishGrid">
+            <label>
+              <span>仓库</span>
+              <input id="publishRepo" type="text" placeholder="仓库名或 owner/repo" autocomplete="off" />
+            </label>
+            <label>
+              <span>分支</span>
+              <input id="publishBranch" type="text" value="gh-pages" autocomplete="off" />
+            </label>
+            <label>
+              <span>备用 Token（可留空）</span>
+              <input id="publishToken" type="password" placeholder="网页登录失败时使用" autocomplete="off" />
+            </label>
+            <label class="checkLine">
+              <input id="publishPrivate" type="checkbox" />
+              <span>新建仓库设为私有</span>
+            </label>
+          </div>
+          <p class="publishNote">优先使用 GitHub 网页授权。仓库可只填名称，会发布到已授权账号下；首次使用会在本项目 `.tools/gh` 准备 GitHub CLI。发布内容包含政策正文、术语词典和附件官网链接，不上传附件原件。</p>
+          <div id="publishStatus" class="publishStatus"></div>
+          <footer class="publishActions">
+            <button id="publishCancelBtn" class="ghost" type="button">取消</button>
+            <button id="publishSubmitBtn" class="ghost" type="button">Token 发布</button>
+            <button id="publishWebSubmitBtn" class="solid" type="button">网页登录授权并发布</button>
+          </footer>
+        </section>
+      </dialog>
+
+      <section class="metrics" id="metrics"></section>
+
+      <nav class="modeTabs" aria-label="工作台视图">
+        <button id="policyTab" class="modeTab active" type="button" data-view="policies">政策检索</button>
+        <button id="glossaryTab" class="modeTab" type="button" data-view="glossary">术语词典</button>
+      </nav>
+
+      <section id="policyView" class="viewPane">
+        <section class="filters" aria-label="政策筛选">
+          <label class="search">
+            <span>关键词</span>
+            <input id="q" type="search" placeholder="专业、课程、学工、人工智能..." autocomplete="off" />
+          </label>
+          <label>
+            <span>来源</span>
+            <select id="source"></select>
+          </label>
+          <label>
+            <span>起始年份</span>
+            <select id="yearFrom"></select>
+          </label>
+          <label>
+            <span>结束年份</span>
+            <select id="yearTo"></select>
+          </label>
+          <label>
+            <span>教育层次</span>
+            <select id="level"></select>
+          </label>
+          <label>
+            <span>工作对象</span>
+            <select id="department"></select>
+          </label>
+          <label>
+            <span>主题</span>
+            <select id="theme"></select>
+          </label>
+          <label>
+            <span>收录范围</span>
+            <select id="scope"></select>
+          </label>
+          <label>
+            <span>附件</span>
+            <select id="hasAttachment">
+              <option value="">全部</option>
+              <option value="1">有附件</option>
+            </select>
+          </label>
+          <label>
+            <span>排序</span>
+            <select id="sort">
+              <option value="date_desc">日期从新到旧</option>
+              <option value="date_asc">日期从旧到新</option>
+              <option value="title">标题</option>
+            </select>
+          </label>
+          <button id="resetBtn" class="solid" type="button">清空</button>
+        </section>
+
+        <main class="workspace">
+          <section class="results" aria-label="政策列表">
+            <div class="listHeader">
+              <strong id="resultCount">0 条</strong>
+              <span id="updateStatus"></span>
+            </div>
+            <div id="resultList" class="resultList"></div>
+          </section>
+
+          <section class="detail" aria-label="政策详情">
+            <div id="detailEmpty" class="emptyState">
+              <h2>选择一条政策</h2>
+              <p>正文、标签、附件和官网链接会显示在这里。</p>
+            </div>
+            <article id="detailContent" hidden></article>
+          </section>
+        </main>
+      </section>
+
+      <section id="glossaryView" class="viewPane" hidden>
+        <section class="glossaryFilters" aria-label="术语筛选">
+          <label class="search">
+            <span>术语检索</span>
+            <input id="glossaryQ" type="search" placeholder="岗位实习、专业群、审核评估、一流课程..." autocomplete="off" />
+          </label>
+          <label>
+            <span>词典</span>
+            <select id="glossaryDictionary"></select>
+          </label>
+          <label>
+            <span>术语分类</span>
+            <select id="glossaryCategory"></select>
+          </label>
+          <button id="glossaryResetBtn" class="solid" type="button">清空</button>
+        </section>
+
+        <main class="glossaryWorkspace">
+          <section class="glossaryListPanel" aria-label="术语列表">
+            <div class="listHeader">
+              <strong id="glossaryCount">0 个术语</strong>
+              <span>分层次入门词典</span>
+            </div>
+            <div id="glossaryList" class="glossaryList"></div>
+          </section>
+
+          <section class="glossaryDetailPanel" aria-label="术语详情">
+            <div id="glossaryEmpty" class="emptyState">
+              <h2>选择一个术语</h2>
+              <p>解释、政策语境、指导场景和依据政策会显示在这里。</p>
+            </div>
+            <article id="glossaryDetail" hidden></article>
+          </section>
+        </main>
+      </section>
+    </div>
+    <script>window.POLICY_BROWSER_STATIC = true;</script>
+    <script src="app.js"></script>
+  </body>
+</html>
