@@ -66,8 +66,10 @@ h1 {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .ghost,
@@ -116,6 +118,10 @@ h1 {
   padding: 0;
 }
 
+.workbenchDialog {
+  width: min(680px, calc(100vw - 28px));
+}
+
 .publishDialog::backdrop {
   background: rgba(31, 39, 40, 0.34);
 }
@@ -157,6 +163,10 @@ h1 {
   gap: 10px;
 }
 
+.spanAll {
+  grid-column: 1 / -1;
+}
+
 .checkLine {
   display: flex;
   align-items: center;
@@ -194,6 +204,14 @@ h1 {
 }
 
 .publishStatus.success {
+  color: var(--teal);
+}
+
+.publishStatus.warning {
+  color: var(--gold);
+}
+
+.publishStatus.warning strong {
   color: var(--teal);
 }
 
@@ -307,7 +325,8 @@ label span {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 38px;
   border: 1px solid #c9c2b7;
@@ -320,11 +339,23 @@ select {
 
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible,
 a:focus-visible {
   border-color: var(--teal);
   box-shadow: 0 0 0 3px rgba(23, 107, 104, 0.18);
   outline: none;
+}
+
+textarea {
+  min-height: 92px;
+  padding: 9px 10px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+input[type="file"] {
+  padding: 7px 10px;
 }
 
 .workspace {
@@ -662,6 +693,105 @@ a:focus-visible {
 .notice {
   color: var(--rose);
   font-size: 13px;
+}
+
+.mutedNotice {
+  color: var(--muted);
+}
+
+.notesList {
+  display: grid;
+  gap: 10px;
+}
+
+.noteCard {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbf7ef;
+  padding: 12px;
+}
+
+.noteHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.noteHead strong {
+  flex: 1;
+  color: var(--ink);
+  font-size: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.noteDelete {
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--rose);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.noteBody {
+  margin: 9px 0 0;
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+.noteImages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.noteImages a {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  aspect-ratio: 4 / 3;
+}
+
+.noteImages img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.noteFiles {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.noteFiles a {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--teal);
+  font-weight: 800;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.noteFiles span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 @media (max-width: 1180px) {

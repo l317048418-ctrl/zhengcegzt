@@ -12,6 +12,7 @@ const state = {
   glossaryTimer: null,
   updateTimer: null,
   publishTimer: null,
+  noteTarget: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -170,6 +171,7 @@ async function getStaticJson(url) {
         contentSource: "",
         issuer: "",
         attachments: [],
+        notes: [],
       };
     }
     return fetch(`data/documents/${encodeURIComponent(id)}.json`).then((response) => {
@@ -198,6 +200,14 @@ function dictionaryOptionList(select, dictionaries) {
       return `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}${count}</option>`;
     })
     .join("");
+}
+
+function mutationDictionaryOptionList(select, dictionaries) {
+  select.innerHTML =
+    `<option value="">自动判断</option>` +
+    dictionaries
+      .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
+      .join("");
 }
 
 function updateGlossaryCategories() {
@@ -258,6 +268,7 @@ async function loadFacets() {
   optionList($("scope"), facets.scopes);
   const dictionaries = facets.glossaryDictionaries || [];
   dictionaryOptionList($("glossaryDictionary"), dictionaries);
+  mutationDictionaryOptionList($("termDictionary"), dictionaries);
   const preferred = state.selectedDictionaryId || "secondary_vocational";
   state.selectedDictionaryId = dictionaries.some((item) => item.id === preferred) ? preferred : dictionaries[0]?.id || "";
   $("glossaryDictionary").value = state.selectedDictionaryId;
@@ -365,6 +376,7 @@ function renderDetail(doc) {
     <div class="toolbar">
       <a href="${escapeHtml(doc.url)}" target="_blank">打开官网原文</a>
       <button type="button" id="copyRef">复制引用</button>
+      ${IS_STATIC ? "" : `<button type="button" id="addPolicyNote">笔记</button>`}
     </div>
     <h3 class="sectionTitle">关键词</h3>
     <div class="chips">${(doc.keywords || "未提取")
@@ -377,10 +389,14 @@ function renderDetail(doc) {
     <p>${escapeHtml(doc.importanceReason || "2020年以来全量收录")}</p>
     <h3 class="sectionTitle">附件</h3>
     <div class="attachments">${attachmentHtml}</div>
+    <h3 class="sectionTitle">学习笔记</h3>
+    <div class="notesList">${renderNotes(doc.notes || [])}</div>
     <h3 class="sectionTitle">正文</h3>
     <div class="bodyText">${escapeHtml(trimArticleText(doc.fullText || doc.excerpt || ""))}</div>
   `;
   $("copyRef").addEventListener("click", () => copyReference(doc));
+  if ($("addPolicyNote")) $("addPolicyNote").addEventListener("click", () => openNoteDialog("policy", doc.id, doc.title));
+  bindNoteDeleteButtons();
 }
 
 async function searchGlossary() {
@@ -471,6 +487,7 @@ function renderGlossaryDetail(term) {
     <div class="detailMeta">${chips.map((v) => `<span class="chip">${escapeHtml(v)}</span>`).join("")}</div>
     <div class="toolbar">
       <button type="button" id="copyTerm">复制词条</button>
+      ${IS_STATIC ? "" : `<button type="button" id="addTermNote">笔记</button>`}
     </div>
     <section class="termBlock leadBlock">
       <h3 class="sectionTitle">一句话解释</h3>
@@ -492,10 +509,14 @@ function renderGlossaryDetail(term) {
     <p class="beginnerTip">${escapeHtml(term.beginnerTip)}</p>
     <h3 class="sectionTitle">相关词</h3>
     <div class="chips">${related || `<span class="notice">未标注</span>`}</div>
+    <h3 class="sectionTitle">学习笔记</h3>
+    <div class="notesList">${renderNotes(term.notes || [])}</div>
     <h3 class="sectionTitle">依据政策</h3>
     <div class="sourceList">${sources}</div>
   `;
   $("copyTerm").addEventListener("click", () => copyTerm(term));
+  if ($("addTermNote")) $("addTermNote").addEventListener("click", () => openNoteDialog("glossary", term.id, term.term));
+  bindNoteDeleteButtons();
   document.querySelectorAll("[data-source-doc]").forEach((button) => {
     button.addEventListener("click", () => openPolicySource(button.dataset.sourceDoc));
   });
@@ -511,6 +532,51 @@ function formatBytes(bytes) {
   if (!bytes) return "";
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function isImageFile(file) {
+  return String(file.mimeType || "").startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.title || file.href || "");
+}
+
+function renderNotes(notes = []) {
+  if (!notes.length) return `<p class="notice mutedNotice">暂无学习笔记。</p>`;
+  return notes
+    .map((note) => {
+      const images = (note.files || []).filter(isImageFile);
+      const files = (note.files || []).filter((file) => !isImageFile(file));
+      const deleteButton = IS_STATIC ? "" : `<button type="button" class="noteDelete" data-note-delete="${escapeHtml(note.id)}">删除</button>`;
+      return `
+        <section class="noteCard" data-note-id="${escapeHtml(note.id)}">
+          <div class="noteHead">
+            <strong>${escapeHtml(note.title || "学习笔记")}</strong>
+            <span>${escapeHtml((note.createdAt || "").replace("T", " "))}</span>
+            ${deleteButton}
+          </div>
+          ${note.body ? `<p class="noteBody">${escapeHtml(note.body)}</p>` : ""}
+          ${
+            images.length
+              ? `<div class="noteImages">${images
+                  .map(
+                    (file) =>
+                      `<a href="${escapeHtml(file.href)}" target="_blank"><img src="${escapeHtml(file.href)}" alt="${escapeHtml(file.title)}" /></a>`,
+                  )
+                  .join("")}</div>`
+              : ""
+          }
+          ${
+            files.length
+              ? `<div class="noteFiles">${files
+                  .map(
+                    (file) =>
+                      `<a href="${escapeHtml(file.href)}" target="_blank">${escapeHtml(file.title)}<span>${formatBytes(file.sizeBytes)}</span></a>`,
+                  )
+                  .join("")}</div>`
+              : ""
+          }
+        </section>
+      `;
+    })
+    .join("");
 }
 
 async function copyReference(doc) {
@@ -542,21 +608,214 @@ async function openPolicySource(docId) {
 function configureStaticMode() {
   if (!IS_STATIC) return;
   document.body.classList.add("staticMode");
+  $("uploadBtn").hidden = true;
+  $("termBtn").hidden = true;
   $("updateBtn").hidden = true;
   $("publishBtn").hidden = true;
   $("dataApiLink").hidden = true;
   $("updateStatus").textContent = "静态版";
 }
 
+function setStatus(elementId, message, type = "") {
+  const status = $(elementId);
+  status.className = `publishStatus ${type}`.trim();
+  status.innerHTML = message;
+}
+
+function openNoteDialog(targetType, targetId, targetTitle) {
+  state.noteTarget = { targetType, targetId };
+  $("noteHeading").value = "学习笔记";
+  $("noteBody").value = "";
+  $("noteFiles").value = "";
+  setStatus("noteStatus", "");
+  $("noteDialog").showModal();
+  setTimeout(() => $("noteBody").focus(), 30);
+}
+
+function closeNoteDialog() {
+  $("noteDialog").close();
+}
+
+function bindNoteDeleteButtons() {
+  document.querySelectorAll("[data-note-delete]").forEach((button) => {
+    button.addEventListener("click", () => deleteStudyNote(button.dataset.noteDelete));
+  });
+}
+
+async function deleteStudyNote(noteId) {
+  if (!noteId) return;
+  if (!window.confirm("删除这条学习笔记？")) return;
+  try {
+    const result = await getJson(`/api/notes/${encodeURIComponent(noteId)}`, { method: "DELETE" });
+    if (result.targetType === "policy") {
+      await selectDocument(result.targetId);
+    } else if (result.targetType === "glossary") {
+      await selectGlossaryTerm(result.targetId);
+    }
+  } catch (error) {
+    alert(error.message || String(error));
+  }
+}
+
+async function saveStudyNote() {
+  if (!state.noteTarget) return;
+  const files = [...$("noteFiles").files];
+  const bodyText = $("noteBody").value.trim();
+  if (!bodyText && !files.length) {
+    setStatus("noteStatus", "请填写文字笔记或上传图片/文件。", "error");
+    return;
+  }
+  const body = new FormData();
+  body.append("targetType", state.noteTarget.targetType);
+  body.append("targetId", state.noteTarget.targetId);
+  body.append("title", $("noteHeading").value.trim());
+  body.append("body", bodyText);
+  files.forEach((file) => body.append("files", file));
+  $("noteSubmitBtn").disabled = true;
+  setStatus("noteStatus", "正在保存笔记...");
+  try {
+    await getJson("/api/notes", { method: "POST", body });
+    setStatus("noteStatus", "笔记已保存。", "success");
+    if (state.noteTarget.targetType === "policy") {
+      await selectDocument(state.noteTarget.targetId);
+    } else {
+      await selectGlossaryTerm(state.noteTarget.targetId);
+    }
+  } catch (error) {
+    setStatus("noteStatus", escapeHtml(error.message || String(error)), "error");
+  } finally {
+    $("noteSubmitBtn").disabled = false;
+  }
+}
+
+function openUploadDialog() {
+  $("uploadFiles").value = "";
+  $("uploadFolderFiles").value = "";
+  $("uploadSourceName").value = localStorage.getItem("policyUploadSourceName") || "本地上传";
+  $("uploadNote").value = "";
+  setStatus("uploadStatus", "");
+  $("uploadDialog").showModal();
+}
+
+function closeUploadDialog() {
+  $("uploadDialog").close();
+}
+
+function setUploadButtonsDisabled(disabled) {
+  $("uploadSubmitBtn").disabled = disabled;
+  $("uploadBtn").disabled = disabled;
+}
+
+async function uploadKnowledgeFiles() {
+  const files = [
+    ...[...$("uploadFiles").files].map((file) => ({ file, name: file.name })),
+    ...[...$("uploadFolderFiles").files].map((file) => ({ file, name: file.webkitRelativePath || file.name })),
+  ];
+  const sourceName = $("uploadSourceName").value.trim() || "本地上传";
+  if (!files.length) {
+    setStatus("uploadStatus", "请选择至少一个文件或一个文件夹。", "error");
+    return;
+  }
+  localStorage.setItem("policyUploadSourceName", sourceName);
+  const body = new FormData();
+  files.forEach(({ file, name }) => body.append("files", file, name));
+  body.append("sourceName", sourceName);
+  body.append("note", $("uploadNote").value.trim());
+  setUploadButtonsDisabled(true);
+  setStatus("uploadStatus", `正在上传 ${files.length} 个文件、解析并重建知识库...`);
+  try {
+    const result = await getJson("/api/uploads/knowledge", { method: "POST", body });
+    const rows = (result.items || [])
+      .map((item) => `${escapeHtml(item.filename)}：${escapeHtml(item.message || "已处理")}`)
+      .join("<br>");
+    setStatus("uploadStatus", `已入库 ${result.count || 0} 个文件。<br>${rows}`, "success");
+    await loadFacets();
+    setActiveView("policies");
+    $("source").value = sourceName;
+    $("q").value = "";
+    state.selectedId = null;
+    await search();
+    const firstId = (result.items || []).find((item) => item.id)?.id;
+    if (firstId) await selectDocument(firstId);
+  } catch (error) {
+    setStatus("uploadStatus", escapeHtml(error.message || String(error)), "error");
+  } finally {
+    setUploadButtonsDisabled(false);
+  }
+}
+
+function openTermDialog() {
+  $("termName").value = "";
+  $("termAliases").value = "";
+  $("termNote").value = "";
+  $("termDictionary").value = "";
+  setStatus("termStatus", "");
+  $("termDialog").showModal();
+  setTimeout(() => $("termName").focus(), 30);
+}
+
+function closeTermDialog() {
+  $("termDialog").close();
+}
+
+function setTermButtonsDisabled(disabled) {
+  $("termSubmitBtn").disabled = disabled;
+  $("termBtn").disabled = disabled;
+}
+
+async function addGlossaryTerm() {
+  const term = $("termName").value.trim();
+  if (!term) {
+    setStatus("termStatus", "请填写术语名称。", "error");
+    return;
+  }
+  setTermButtonsDisabled(true);
+  setStatus("termStatus", "正在结合本地政策和教育部、四川省教育厅在线资料分析术语...");
+  try {
+    const result = await getJson("/api/glossary/custom", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        term,
+        aliases: $("termAliases").value.trim(),
+        note: $("termNote").value.trim(),
+        dictionaryId: $("termDictionary").value,
+      }),
+    });
+    const addedTerm = result.term || {};
+    setStatus("termStatus", escapeHtml(result.message || "术语已加入词典。"), "success");
+    await loadFacets();
+    setActiveView("glossary");
+    if (addedTerm.dictionaryId) {
+      state.selectedDictionaryId = addedTerm.dictionaryId;
+      $("glossaryDictionary").value = addedTerm.dictionaryId;
+      updateGlossaryCategories();
+    }
+    $("glossaryQ").value = addedTerm.term || term;
+    $("glossaryCategory").value = "";
+    state.selectedTermId = null;
+    await searchGlossary();
+    if (addedTerm.id) await selectGlossaryTerm(addedTerm.id);
+  } catch (error) {
+    setStatus("termStatus", escapeHtml(error.message || String(error)), "error");
+  } finally {
+    setTermButtonsDisabled(false);
+  }
+}
+
 function openPublishDialog() {
-  $("publishRepo").value = localStorage.getItem("policyGithubRepo") || "education-policy-workbench";
-  $("publishBranch").value = localStorage.getItem("policyGithubBranch") || "gh-pages";
-  $("publishToken").value = "";
-  $("publishPrivate").checked = false;
+  $("publishRepo").value = localStorage.getItem("policyGithubDesktopRepo") || "";
+  $("publishBranch").value = localStorage.getItem("policyGithubDesktopBranch") || "main";
   $("publishStatus").className = "publishStatus";
-  $("publishStatus").textContent = "正在检查网页登录发布环境...";
+  $("publishStatus").textContent = "正在读取本地 GitHub Desktop 仓库...";
   $("publishDialog").showModal();
-  refreshGithubWebStatus();
+  getJson("/api/publish/github-desktop/default")
+    .then((data) => {
+      if (!$("publishRepo").value) $("publishRepo").value = data.repoPath || "";
+      if (!$("publishBranch").value) $("publishBranch").value = data.branch || "main";
+      setPublishStatus("准备好后点击“发布更新”。");
+    })
+    .catch((error) => setPublishStatus(escapeHtml(error.message || String(error)), "error"));
 }
 
 function closePublishDialog() {
@@ -570,38 +829,43 @@ function setPublishStatus(message, type = "") {
 }
 
 async function publishToGithub() {
-  const repo = $("publishRepo").value.trim();
-  const token = $("publishToken").value.trim();
-  const branch = $("publishBranch").value.trim() || "gh-pages";
-  if (!repo) {
-    setPublishStatus("请填写 GitHub 仓库名，例如 education-policy-workbench；也可以填 owner/repo。", "error");
+  const repoPath = $("publishRepo").value.trim();
+  const branch = $("publishBranch").value.trim() || "main";
+  if (!repoPath) {
+    setPublishStatus("请填写 GitHub Desktop 本地仓库路径。", "error");
     return;
   }
-  if (!token) {
-    setPublishStatus("Token 发布需要填写 token；你也可以直接点“网页登录授权并发布”。", "error");
-    return;
-  }
-  localStorage.setItem("policyGithubRepo", repo);
-  localStorage.setItem("policyGithubBranch", branch);
+  localStorage.setItem("policyGithubDesktopRepo", repoPath);
+  localStorage.setItem("policyGithubDesktopBranch", branch);
   $("publishSubmitBtn").disabled = true;
   $("publishBtn").disabled = true;
-  setPublishStatus("正在生成静态站点并推送到 GitHub...");
+  setPublishStatus("正在生成静态站点、更新本地仓库并推送...");
   try {
-    const result = await getJson("/api/publish/github", {
+    const result = await getJson("/api/publish/github-desktop", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        repo,
-        token,
+        repoPath,
         branch,
-        private: $("publishPrivate").checked,
       }),
     });
-    const pagesNote = result.pagesConfigured ? "" : `<br>${escapeHtml(result.pagesMessage || "Pages 可能需要稍后在仓库设置中开启。")}`;
-    setPublishStatus(
-      `发布完成：<a href="${escapeHtml(result.url)}" target="_blank">${escapeHtml(result.url)}</a>${pagesNote}`,
-      "success",
-    );
+    if (result.pushed) {
+      const url = result.url ? `<br><a href="${escapeHtml(result.url)}" target="_blank">${escapeHtml(result.url)}</a>` : "";
+      setPublishStatus(`已提交并推送，GitHub Desktop 已打开。${url}`, "success");
+    } else if (result.needsDesktopPush) {
+      const url = result.url ? `<br>推送完成后访问：<a href="${escapeHtml(result.url)}" target="_blank">${escapeHtml(result.url)}</a>` : "";
+      const ahead = result.ahead ? `当前有 ${result.ahead} 个本地提交待推送。` : "当前本地提交待推送。";
+      const repoHint = result.repoPath ? `<br>仓库路径：${escapeHtml(result.repoPath)}` : "";
+      setPublishStatus(
+        `网页已生成并提交到本地仓库，GitHub Desktop 已打开。${ahead}${repoHint}<br>` +
+          `下一步在 GitHub Desktop 操作：左上角 <strong>Current Repository</strong> 选择 <strong>zhengcegzt</strong>，` +
+          `然后看窗口顶部工具栏右侧，点击带上箭头的 <strong>Push origin</strong> / <strong>推送 origin</strong>。` +
+          `<br>如果没有看到按钮，也可以用 Mac 顶部菜单 <strong>Repository → Push</strong>。${url}`,
+        "warning",
+      );
+    } else {
+      setPublishStatus(`已更新本地仓库并打开 GitHub Desktop，但自动推送未完成：<br>${escapeHtml(result.pushError || "")}`, "error");
+    }
   } catch (error) {
     setPublishStatus(escapeHtml(error.message || String(error)), "error");
   } finally {
@@ -628,7 +892,7 @@ function publishFormPayload() {
 
 function setPublishButtonsDisabled(disabled) {
   $("publishSubmitBtn").disabled = disabled;
-  $("publishWebSubmitBtn").disabled = disabled;
+  if ($("publishWebSubmitBtn")) $("publishWebSubmitBtn").disabled = disabled;
   $("publishBtn").disabled = disabled;
 }
 
@@ -770,12 +1034,22 @@ async function init() {
   $("glossaryCategory").addEventListener("change", debounceGlossarySearch);
   $("resetBtn").addEventListener("click", resetFilters);
   $("glossaryResetBtn").addEventListener("click", resetGlossaryFilters);
+  $("noteCloseBtn").addEventListener("click", closeNoteDialog);
+  $("noteCancelBtn").addEventListener("click", closeNoteDialog);
+  $("noteSubmitBtn").addEventListener("click", saveStudyNote);
+  $("uploadBtn").addEventListener("click", openUploadDialog);
+  $("uploadCloseBtn").addEventListener("click", closeUploadDialog);
+  $("uploadCancelBtn").addEventListener("click", closeUploadDialog);
+  $("uploadSubmitBtn").addEventListener("click", uploadKnowledgeFiles);
+  $("termBtn").addEventListener("click", openTermDialog);
+  $("termCloseBtn").addEventListener("click", closeTermDialog);
+  $("termCancelBtn").addEventListener("click", closeTermDialog);
+  $("termSubmitBtn").addEventListener("click", addGlossaryTerm);
   $("updateBtn").addEventListener("click", updateKnowledgeBase);
   $("publishBtn").addEventListener("click", openPublishDialog);
   $("publishCloseBtn").addEventListener("click", closePublishDialog);
   $("publishCancelBtn").addEventListener("click", closePublishDialog);
   $("publishSubmitBtn").addEventListener("click", publishToGithub);
-  $("publishWebSubmitBtn").addEventListener("click", publishWithGithubWeb);
   $("policyTab").addEventListener("click", () => setActiveView("policies"));
   $("glossaryTab").addEventListener("click", () => setActiveView("glossary"));
 }

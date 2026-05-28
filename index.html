@@ -14,6 +14,8 @@
           <h1>教育政策工作台</h1>
         </div>
         <div class="actions">
+          <button id="uploadBtn" class="ghost" type="button">上传资料入库</button>
+          <button id="termBtn" class="ghost" type="button">添加术语</button>
           <button id="updateBtn" class="ghost" type="button">更新知识库</button>
           <button id="publishBtn" class="ghost" type="button">发布到 GitHub</button>
           <a id="dataApiLink" class="ghost link" href="/api/search" target="_blank">数据接口</a>
@@ -24,35 +26,130 @@
         <section class="publishPanel">
           <header class="publishHeader">
             <div>
-              <p class="eyebrow">GitHub Pages</p>
-              <h2 id="publishTitle">网页登录发布</h2>
+              <p class="eyebrow">GitHub Desktop</p>
+              <h2 id="publishTitle">发布网页更新</h2>
             </div>
             <button id="publishCloseBtn" class="iconButton" type="button" aria-label="关闭">×</button>
           </header>
           <div class="publishGrid">
-            <label>
-              <span>仓库</span>
-              <input id="publishRepo" type="text" placeholder="仓库名或 owner/repo" autocomplete="off" />
+            <label class="spanAll">
+              <span>本地仓库路径</span>
+              <input id="publishRepo" type="text" autocomplete="off" />
             </label>
             <label>
               <span>分支</span>
-              <input id="publishBranch" type="text" value="gh-pages" autocomplete="off" />
-            </label>
-            <label>
-              <span>备用 Token（可留空）</span>
-              <input id="publishToken" type="password" placeholder="网页登录失败时使用" autocomplete="off" />
-            </label>
-            <label class="checkLine">
-              <input id="publishPrivate" type="checkbox" />
-              <span>新建仓库设为私有</span>
+              <input id="publishBranch" type="text" value="main" autocomplete="off" />
             </label>
           </div>
-          <p class="publishNote">优先使用 GitHub 网页授权。仓库可只填名称，会发布到已授权账号下；首次使用会在本项目 `.tools/gh` 准备 GitHub CLI。发布内容包含政策正文、术语词典和附件官网链接，不上传附件原件。</p>
+          <p class="publishNote">会先生成最新静态网页，再更新 GitHub Desktop 的本地仓库，自动提交并尝试推送；如果需要你手动推送，请在 GitHub Desktop 左上角选择 zhengcegzt，再点击顶部工具栏右侧的 Push origin。</p>
           <div id="publishStatus" class="publishStatus"></div>
           <footer class="publishActions">
             <button id="publishCancelBtn" class="ghost" type="button">取消</button>
-            <button id="publishSubmitBtn" class="ghost" type="button">Token 发布</button>
-            <button id="publishWebSubmitBtn" class="solid" type="button">网页登录授权并发布</button>
+            <button id="publishSubmitBtn" class="solid" type="button">发布更新</button>
+          </footer>
+        </section>
+      </dialog>
+
+      <dialog id="uploadDialog" class="publishDialog workbenchDialog" aria-labelledby="uploadTitle">
+        <section class="publishPanel">
+          <header class="publishHeader">
+            <div>
+              <p class="eyebrow">本地资料入库</p>
+              <h2 id="uploadTitle">上传知识库文件</h2>
+            </div>
+            <button id="uploadCloseBtn" class="iconButton" type="button" aria-label="关闭">×</button>
+          </header>
+          <div class="publishGrid">
+            <label class="spanAll">
+              <span>文件</span>
+              <input id="uploadFiles" type="file" multiple />
+            </label>
+            <label class="spanAll">
+              <span>文件夹</span>
+              <input id="uploadFolderFiles" type="file" multiple webkitdirectory directory />
+            </label>
+            <label>
+              <span>来源名称</span>
+              <input id="uploadSourceName" type="text" value="本地上传" autocomplete="off" />
+            </label>
+            <label class="spanAll">
+              <span>补充说明</span>
+              <textarea id="uploadNote" rows="3" placeholder="可填写资料背景、所属学校或使用场景"></textarea>
+            </label>
+          </div>
+          <p class="publishNote">支持单个文件或整个文件夹上传，格式包括 PDF、Word、PPT、Excel、HTML、Markdown、TXT 等；上传后会重建政策索引和术语依据。</p>
+          <div id="uploadStatus" class="publishStatus"></div>
+          <footer class="publishActions">
+            <button id="uploadCancelBtn" class="ghost" type="button">取消</button>
+            <button id="uploadSubmitBtn" class="solid" type="button">上传并更新</button>
+          </footer>
+        </section>
+      </dialog>
+
+      <dialog id="termDialog" class="publishDialog workbenchDialog" aria-labelledby="termTitle">
+        <section class="publishPanel">
+          <header class="publishHeader">
+            <div>
+              <p class="eyebrow">术语词典</p>
+              <h2 id="termTitle">添加术语</h2>
+            </div>
+            <button id="termCloseBtn" class="iconButton" type="button" aria-label="关闭">×</button>
+          </header>
+          <div class="publishGrid">
+            <label>
+              <span>术语</span>
+              <input id="termName" type="text" placeholder="例如：校本数据治理" autocomplete="off" />
+            </label>
+            <label>
+              <span>加入词典</span>
+              <select id="termDictionary"></select>
+            </label>
+            <label class="spanAll">
+              <span>别名</span>
+              <input id="termAliases" type="text" placeholder="多个别名用顿号或逗号分隔" autocomplete="off" />
+            </label>
+            <label class="spanAll">
+              <span>补充说明</span>
+              <textarea id="termNote" rows="4" placeholder="可写下你看到它的政策、场景或想解决的问题"></textarea>
+            </label>
+          </div>
+          <p class="publishNote">未选择词典时，系统会按术语、说明、本地政策命中和教育部、四川省教育厅在线资料自动判断中职、高职或本科词典。</p>
+          <div id="termStatus" class="publishStatus"></div>
+          <footer class="publishActions">
+            <button id="termCancelBtn" class="ghost" type="button">取消</button>
+            <button id="termSubmitBtn" class="solid" type="button">分析并加入</button>
+          </footer>
+        </section>
+      </dialog>
+
+      <dialog id="noteDialog" class="publishDialog workbenchDialog" aria-labelledby="noteTitle">
+        <section class="publishPanel">
+          <header class="publishHeader">
+            <div>
+              <p class="eyebrow">学习笔记</p>
+              <h2 id="noteTitle">添加笔记</h2>
+            </div>
+            <button id="noteCloseBtn" class="iconButton" type="button" aria-label="关闭">×</button>
+          </header>
+          <div class="publishGrid">
+            <label class="spanAll">
+              <span>标题</span>
+              <input id="noteHeading" type="text" placeholder="例如：教务处指导要点" autocomplete="off" />
+            </label>
+            <label class="spanAll">
+              <span>文字笔记</span>
+              <textarea id="noteBody" rows="5" placeholder="写下你的理解、疑问、指导场景或待核查事项"></textarea>
+            </label>
+            <label class="spanAll">
+              <span>图片或文件</span>
+              <input id="noteFiles" type="file" multiple />
+            </label>
+          </div>
+          <p class="publishNote">笔记会关联到当前政策或术语；图片会在详情页直接展示，其他文件会作为附件保存。</p>
+          <div id="noteStatus" class="publishStatus"></div>
+          <footer class="publishActions">
+            <button id="noteCancelBtn" class="ghost" type="button">取消</button>
+            <button id="noteSubmitBtn" class="solid" type="button">保存笔记</button>
           </footer>
         </section>
       </dialog>
