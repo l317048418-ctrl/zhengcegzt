@@ -18,6 +18,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 const IS_STATIC = Boolean(window.POLICY_BROWSER_STATIC);
 const EMBEDDED_DATA = window.POLICY_BROWSER_EMBEDDED_DATA || null;
+const STATIC_VERSION = window.POLICY_BROWSER_DATA_VERSION || "";
 const staticCache = {};
 
 function escapeHtml(value = "") {
@@ -46,12 +47,16 @@ async function loadStaticData(name) {
     return EMBEDDED_DATA[name];
   }
   if (!staticCache[name]) {
-    staticCache[name] = fetch(`data/${name}.json`).then((response) => {
+    staticCache[name] = fetch(staticAssetUrl(`data/${name}.json`)).then((response) => {
       if (!response.ok) throw new Error(`静态数据加载失败：${name}`);
       return response.json();
     });
   }
   return staticCache[name];
+}
+
+function staticAssetUrl(path) {
+  return STATIC_VERSION ? `${path}?v=${encodeURIComponent(STATIC_VERSION)}` : path;
 }
 
 function cleanSearchItem(item) {
@@ -174,7 +179,7 @@ async function getStaticJson(url) {
         notes: [],
       };
     }
-    return fetch(`data/documents/${encodeURIComponent(id)}.json`).then((response) => {
+    return fetch(staticAssetUrl(`data/documents/${encodeURIComponent(id)}.json`)).then((response) => {
       if (!response.ok) throw new Error("未找到政策详情");
       return response.json();
     });
