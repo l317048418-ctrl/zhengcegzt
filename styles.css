@@ -72,6 +72,28 @@ h1 {
   justify-content: flex-end;
 }
 
+.staticBanner {
+  max-width: 1520px;
+  margin: 0 auto 14px;
+  padding: 10px 12px;
+  border: 1px solid #d7c48d;
+  border-radius: 8px;
+  background: #fff9e8;
+  color: #66562a;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.staticBanner strong {
+  margin-right: 10px;
+  color: var(--teal);
+}
+
+.staticOnly {
+  border-color: #d7c48d;
+  background: #fff9e8;
+}
+
 .ghost,
 .solid {
   min-height: 38px;

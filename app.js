@@ -613,12 +613,23 @@ async function openPolicySource(docId) {
 function configureStaticMode() {
   if (!IS_STATIC) return;
   document.body.classList.add("staticMode");
-  $("uploadBtn").hidden = true;
-  $("termBtn").hidden = true;
-  $("updateBtn").hidden = true;
-  $("publishBtn").hidden = true;
+  $("staticBanner").hidden = false;
+  [
+    ["uploadBtn", "线上静态版不能直接上传资料，请回到本地工作台上传后再发布。"],
+    ["termBtn", "线上静态版不能直接添加术语，请回到本地工作台添加后再发布。"],
+    ["updateBtn", "线上静态版不能直接更新知识库，请回到本地工作台更新后再发布。"],
+    ["publishBtn", "线上静态版不能发布 GitHub，请回到本地工作台发布。"],
+  ].forEach(([id, title]) => {
+    const button = $(id);
+    button.classList.add("staticOnly");
+    button.title = title;
+  });
   $("dataApiLink").hidden = true;
   $("updateStatus").textContent = "静态版";
+}
+
+function showStaticOnlyMessage(action) {
+  window.alert(`线上静态版只支持阅读、检索和打开已导出的附件，不能直接${action}。\n\n请回到本地工作台完成该操作，再点击“发布到 GitHub”同步到线上。`);
 }
 
 function setStatus(elementId, message, type = "") {
@@ -1042,16 +1053,16 @@ async function init() {
   $("noteCloseBtn").addEventListener("click", closeNoteDialog);
   $("noteCancelBtn").addEventListener("click", closeNoteDialog);
   $("noteSubmitBtn").addEventListener("click", saveStudyNote);
-  $("uploadBtn").addEventListener("click", openUploadDialog);
+  $("uploadBtn").addEventListener("click", IS_STATIC ? () => showStaticOnlyMessage("上传资料入库") : openUploadDialog);
   $("uploadCloseBtn").addEventListener("click", closeUploadDialog);
   $("uploadCancelBtn").addEventListener("click", closeUploadDialog);
   $("uploadSubmitBtn").addEventListener("click", uploadKnowledgeFiles);
-  $("termBtn").addEventListener("click", openTermDialog);
+  $("termBtn").addEventListener("click", IS_STATIC ? () => showStaticOnlyMessage("添加术语") : openTermDialog);
   $("termCloseBtn").addEventListener("click", closeTermDialog);
   $("termCancelBtn").addEventListener("click", closeTermDialog);
   $("termSubmitBtn").addEventListener("click", addGlossaryTerm);
-  $("updateBtn").addEventListener("click", updateKnowledgeBase);
-  $("publishBtn").addEventListener("click", openPublishDialog);
+  $("updateBtn").addEventListener("click", IS_STATIC ? () => showStaticOnlyMessage("更新知识库") : updateKnowledgeBase);
+  $("publishBtn").addEventListener("click", IS_STATIC ? () => showStaticOnlyMessage("发布到 GitHub") : openPublishDialog);
   $("publishCloseBtn").addEventListener("click", closePublishDialog);
   $("publishCancelBtn").addEventListener("click", closePublishDialog);
   $("publishSubmitBtn").addEventListener("click", publishToGithub);
